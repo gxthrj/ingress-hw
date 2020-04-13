@@ -1,0 +1,16 @@
+{
+  "conf":{
+    "etcd":{
+      "address": ["http://10.12.6.35:2379"]
+    },
+    "k8sAuth":{
+      "file": "/Users/jinwei/go_git/go/src/github.com/gxthrj/ingress-hw/conf/config"
+    },
+    "syslog":{
+      "host": "localhost"
+    },
+    "apisix":{
+      "base_url": "http://172.16.20.90:30116/apisix/admin"
+    }
+  }
+}
