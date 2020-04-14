@@ -117,9 +117,12 @@ func watchEtcd(ctx context.Context, kapi client.KeysAPI, key string) {
 					logger.Error(err)
 				} else {
 					index := conf.GetUpstreamIndexMap()[upstream.Desc]
+					logger.Infof("%d:%d", index, n.ModifiedIndex)
 					if index >= n.ModifiedIndex {
 						// do nothing
+						logger.Infof("%s index out of date", upstream.Desc)
 					} else {
+						logger.Infof("%s 开始同步", upstream.Desc)
 						TransOne(n)
 						// sync upstream
 						logger.Info(conf.GetUpstreamK8sMap())

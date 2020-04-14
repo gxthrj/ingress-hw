@@ -9,7 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"strings"
 	"github.com/gxthrj/ingress-hw/pkg/apisix"
-	"encoding/json"
 	"fmt"
 )
 
@@ -119,20 +118,41 @@ func Sync(se *conf.SyncEvent){
 					// 容错
 					nodes["127.0.0.1:8080"] = 0
 				}
-				// update upstream
-				if resp, err := apisix.UpdateUpstream(upstreamId, desc, nodes); err != nil {
-
-				}else {
-					// 更新 modifyIndex
-					value := resp.Node.Value
-					var upstream conf.Upstream
-					if err := json.Unmarshal([]byte(value), &upstream); err != nil {
-						logger.Error(err)
+				// check from apisix if need to update
+				needToUpdate := false
+				response := apisix.FindUpstreamByName(desc)
+				if response.Upstream.Key != "" {
+					// check nodes
+					oldNodes := response.Upstream.UpstreamNodes.Nodes
+					if len(oldNodes) == len(nodes) {
+						for k, _ := range oldNodes {
+							if nodes[k] == 0 {
+								needToUpdate = true
+							}
+						}
 					} else {
-						conf.GetUpstreamIndexMap()[upstream.Desc] = resp.Node.ModifiedIndex
+						needToUpdate = true
 					}
 				}
-
+				// update upstream
+				if needToUpdate {
+					if resp, err := apisix.UpdateUpstream(upstreamId, desc, nodes); err != nil {
+						logger.Error(err.Error())
+					}else {
+						// 更新 modifyIndex
+						upstream := resp.Node.Value
+						logger.Info(resp)
+						logger.Info(upstream)
+						conf.GetUpstreamIndexMap()[upstream.Desc] = resp.Node.ModifiedIndex
+						//var upstream conf.Upstream
+						//if err := json.Unmarshal([]byte(value), &upstream); err != nil {
+						//	logger.Error(err)
+						//} else {
+						//	logger.Info(upstream)
+						//	conf.GetUpstreamIndexMap()[upstream.Desc] = resp.Node.ModifiedIndex
+						//}
+					}
+				}
 				// from label
 				//if pods, err := ListPods(k8sInfo.Label); err == nil {
 				//	nodes := make(map[string]int64)
