@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/gxthrj/ingress-hw/pkg/k8s"
 	"github.com/gxthrj/ingress-hw/pkg/web"
 	"github.com/gxthrj/ingress-hw/pkg/apisix"
+	"github.com/gxthrj/ingress-hw/pkg/k8s"
 )
 
 func main(){

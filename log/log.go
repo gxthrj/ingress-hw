@@ -3,12 +3,12 @@ package log
 import (
 	"bufio"
 	"fmt"
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"log/syslog"
 	"os"
 	"runtime"
 	"strings"
-	"ingress-hw/conf"
+	"github.com/gxthrj/ingress-hw/conf"
 )
 
 var logEntry *logrus.Entry
@@ -23,10 +23,10 @@ func GetLogger() *logrus.Entry {
 		}
 		log.SetFormatter(&logrus.JSONFormatter{})
 		logEntry = log.WithFields(logrus.Fields{
-			"app": "kong-grace",
+			"app": "ingress-hw",
 		})
 		hook, err := createHook("udp", fmt.Sprintf("%s:514", conf.Syslog.Host),
-			syslog.LOG_LOCAL4, "kong-grace")
+			syslog.LOG_LOCAL4, "ingress-hw")
 		if err != nil {
 			panic("failed to create log hook " + conf.Syslog.Host)
 		}

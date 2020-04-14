@@ -10,6 +10,7 @@ import (
 	"strings"
 	"github.com/gxthrj/ingress-hw/pkg/apisix"
 	"encoding/json"
+	"fmt"
 )
 
 const ADD = "ADD"
@@ -38,34 +39,80 @@ func (c *controller) run() {
 
 func (c *controller) process(obj interface{}) {
 	qo, _ := obj.(*queueObj)
-	pod, _ := qo.Obj.(*v1.Pod)
-	ns := pod.Namespace
-	deployName := pod.Annotations["app"]
-	for _, p := range pod.Spec.Containers[0].Ports {
-		if p.ContainerPort != 0 {
-			Sync(ns, deployName, p.ContainerPort)
+	ep, _ := qo.Obj.(*v1.Endpoints)
+	if ep.Namespace != "kube-system"{
+		for _, s := range ep.Subsets{
+			// ips
+			ips := make([]string, 0)
+			for _, address := range s.Addresses{
+				ips = append(ips, address.IP)
+			}
+			// ports
+			for _, port := range s.Ports {
+				infos := make([]podInfo, 0)
+				for _, address := range s.Addresses {
+					ips = append(ips, address.IP)
+					infos = append(infos, podInfo{PodIp: address.IP, Port: port.Port})
+				}
+				se := &conf.SyncEvent{Namespace: ep.Namespace, Name: ep.Name, Port: port.Port, Nodes: ToMap(infos)}
+				conf.SyncQueue <- se
+			}
 		}
-
 	}
 }
 
-func Sync(ns, name string, port int32){
-	desc := ns + "_" + name + "_" + strconv.Itoa(int(port))
-	key := conf.GetUpstreamMap()[desc]
-	if key != ""{
-		tmp := strings.Split(key, "/")
-		upstreamId := tmp[len(tmp) - 1]
-		k8sInfoMap := conf.GetUpstreamK8sMap()
-		k8sInfo := k8sInfoMap[desc]
-		if k8sInfo != nil {
-			if pods, err := ListPods(k8sInfo.Label); err == nil {
-				nodes := make(map[string]int64)
-				for _, pod := range pods {
-					for _, condition := range pod.Status.Conditions {
-						if condition.Type == v1.PodReady && condition.Status == v1.ConditionTrue && pod.Status.Phase == v1.PodRunning { // pod Ready
-							ip := pod.Status.PodIP
-							nodes[ip + ":" + strconv.Itoa(int(port))] = 100
+func ToMap(infos []podInfo) map[string]int64 {
+	result := make(map[string]int64)
+	for _, p := range infos {
+		s := fmt.Sprintf("%s:%d", p.PodIp, p.Port)
+		result[s] = 100 //权重默认100
+	}
+	return result
+}
+
+type podInfo struct {
+	PodIp string `json:"podIp"`
+	Port int32 `json:"port"`
+}
+
+func RunSync() {
+	for {
+		select {
+			case se := <- conf.SyncQueue:
+				logger.Info(se)
+				Sync(se)
+		}
+	}
+}
+
+func Sync(se *conf.SyncEvent){
+	ns := se.Namespace
+	name := se.Name
+	port := se.Port
+	if port != 0 {
+		desc := ns + "_" + name + "_" + strconv.Itoa(int(port))
+		key := conf.GetUpstreamMap()[desc]
+		if key != "" {
+			tmp := strings.Split(key, "/")
+			upstreamId := tmp[len(tmp) - 1]
+			k8sInfoMap := conf.GetUpstreamK8sMap()
+			k8sInfo := k8sInfoMap[desc]
+			if k8sInfo != nil {
+				// from svc endpoint
+				nodes := se.Nodes
+				if len(nodes) == 0 {
+					epInformer := conf.GetEpInformer()
+					ep, _ := epInformer.Lister().Endpoints(ns).Get(name)
+					if port != 0 && ep != nil {
+						ips := make([]string, 0)
+						infos := make([]podInfo, 0)
+						for _, s := range ep.Subsets{
+							for _, address := range s.Addresses{
+								ips = append(ips, address.IP)
+								infos = append(infos, podInfo{PodIp: address.IP, Port: int32(port)})
+							}
 						}
+						nodes = ToMap(infos)
 					}
 				}
 				if len(nodes) == 0 {
@@ -85,6 +132,36 @@ func Sync(ns, name string, port int32){
 						conf.GetUpstreamIndexMap()[upstream.Desc] = resp.Node.ModifiedIndex
 					}
 				}
+
+				// from label
+				//if pods, err := ListPods(k8sInfo.Label); err == nil {
+				//	nodes := make(map[string]int64)
+				//	for _, pod := range pods {
+				//		for _, condition := range pod.Status.Conditions {
+				//			if condition.Type == v1.PodReady && condition.Status == v1.ConditionTrue && pod.Status.Phase == v1.PodRunning { // pod Ready
+				//				ip := pod.Status.PodIP
+				//				nodes[ip + ":" + strconv.Itoa(int(port))] = 100
+				//			}
+				//		}
+				//	}
+				//	if len(nodes) == 0 {
+				//		// 容错
+				//		nodes["127.0.0.1:8080"] = 0
+				//	}
+				//	// update upstream
+				//	if resp, err := apisix.UpdateUpstream(upstreamId, desc, nodes); err != nil {
+				//
+				//	}else {
+				//		// 更新 modifyIndex
+				//		value := resp.Node.Value
+				//		var upstream conf.Upstream
+				//		if err := json.Unmarshal([]byte(value), &upstream); err != nil {
+				//			logger.Error(err)
+				//		} else {
+				//			conf.GetUpstreamIndexMap()[upstream.Desc] = resp.Node.ModifiedIndex
+				//		}
+				//	}
+				//}
 			}
 		}
 	}
@@ -127,14 +204,15 @@ func Watch(){
 	setupErrorHandlers()
 	// informer
 	stopCh := make(chan struct{})
-	podInformer := conf.GetPodInformer()
+	epInformer := conf.GetEpInformer()
 	c := &controller{
 		queue: make(chan interface{}, 100),
 	}
-	podInformer.Informer().AddEventHandler(&QueueEventHandler{c:c})
+	epInformer.Informer().AddEventHandler(&QueueEventHandler{c:c})
 	// podInformer
-	go podInformer.Informer().Run(stopCh)
+	go epInformer.Informer().Run(stopCh)
 	go c.run()
+	go RunSync()
 	// svcInformer
 	svcInformer := conf.GetSvcInformer()
 	go svcInformer.Informer().Run(stopCh)

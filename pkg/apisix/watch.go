@@ -5,13 +5,13 @@ import (
 	"go.etcd.io/etcd/client"
 	"context"
 	"github.com/gxthrj/ingress-hw/conf"
-	"log"
+	"github.com/gxthrj/ingress-hw/log"
 	"encoding/json"
-	"github.com/gxthrj/ingress-hw/pkg/k8s"
 )
 
 const ApisixUpstreams = "/apisix/upstreams"
 var EUpstreams = &client.Response{}
+var logger = log.GetLogger()
 
 // EtcdWatcher
 type EtcdWatcher struct {
@@ -44,7 +44,7 @@ func (e *EtcdWatcher) ListUpstreams(){
 	kapi := client.NewKeysAPI(e.client)
 	// balancer pod level
 	if resp, err := kapi.Get(context.Background(), ApisixUpstreams, nil); err != nil {
-		log.Println(err.Error())
+		logger.Error(err.Error())
 	} else {
 		EUpstreams = resp
 		// trans to map
@@ -52,7 +52,9 @@ func (e *EtcdWatcher) ListUpstreams(){
 		// sync upstreams
 		upstreamK8sMap := conf.GetUpstreamK8sMap()
 		for _, v := range upstreamK8sMap {
-			k8s.Sync(v.Namespace, v.Name, int32(v.Port))
+			//k8s.Sync(v.Namespace, v.Name, int32(v.Port))
+			se := &conf.SyncEvent{Namespace: v.Namespace, Name: v.Name, Port: int32(v.Port)}
+			conf.SyncQueue <- se
 		}
 	}
 }
@@ -72,10 +74,10 @@ func trans(eus *client.Response){
 	}
 }
 
-func TransOne(node *client.Node){
+func TransOne(node *client.Node) conf.Upstream{
 	var upstream conf.Upstream
 	if err := json.Unmarshal([]byte(node.Value), &upstream); err != nil {
-		log.Println(err.Error())
+		logger.Error(err.Error())
 	} else {
 		// map[upstreamName]= upstream key
 		conf.GetUpstreamMap()[upstream.Desc] = node.Key
@@ -84,6 +86,7 @@ func TransOne(node *client.Node){
 		// map[upstreamName] = k8s deployment info
 		conf.GetUpstreamK8sMap()[upstream.Desc] = &upstream.K8sDeployInfo
 	}
+	return upstream
 }
 
 func Watch(){
@@ -101,32 +104,55 @@ func watchEtcd(ctx context.Context, kapi client.KeysAPI, key string) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("etcd watch stopped")
+			logger.Info("etcd watch stopped")
 			return
 		default:
 			if v, err := watcher.Next(context.Background()); err != nil {
 				continue
 			} else {
-				// 遍历 nodes，查看是否已经存在，不存在的需要添加
-				for _, n := range v.Node.Nodes{
-					value := n.Value
-					var upstream conf.Upstream
-					if err := json.Unmarshal([]byte(value), &upstream); err != nil {
-						log.Println(err)
+				n := v.Node
+				value := n.Value
+				var upstream conf.Upstream
+				if err := json.Unmarshal([]byte(value), &upstream); err != nil {
+					logger.Error(err)
+				} else {
+					index := conf.GetUpstreamIndexMap()[upstream.Desc]
+					if index >= n.ModifiedIndex {
+						// do nothing
 					} else {
-						index := conf.GetUpstreamIndexMap()[upstream.Desc]
-						if index >= n.ModifiedIndex {
-							// do nothing
-						} else {
-							TransOne(n)
-							// sync upstream
-							k := conf.GetUpstreamK8sMap()[upstream.Desc]
-							if k != nil {
-								k8s.Sync(k.Namespace, k.Name, int32(k.Port))
-							}
+						TransOne(n)
+						// sync upstream
+						logger.Info(conf.GetUpstreamK8sMap())
+						k := conf.GetUpstreamK8sMap()[upstream.Desc]
+						if k != nil && k.Port != 0{
+							//k8s.Sync(k.Namespace, k.Name, int32(k.Port))
+							se := &conf.SyncEvent{Namespace: k.Namespace, Name: k.Name, Port: int32(k.Port)}
+							conf.SyncQueue <- se
 						}
 					}
 				}
+				// 遍历 nodes，查看是否已经存在，不存在的需要添加
+				//for _, n := range v.Node.Nodes{
+				//	value := n.Value
+				//	var upstream conf.Upstream
+				//	if err := json.Unmarshal([]byte(value), &upstream); err != nil {
+				//		log.Println(err)
+				//	} else {
+				//		index := conf.GetUpstreamIndexMap()[upstream.Desc]
+				//		if index >= n.ModifiedIndex {
+				//			// do nothing
+				//		} else {
+				//			TransOne(n)
+				//			// sync upstream
+				//			k := conf.GetUpstreamK8sMap()[upstream.Desc]
+				//			if k != nil {
+				//				//k8s.Sync(k.Namespace, k.Name, int32(k.Port))
+				//				se := &conf.SyncEvent{Namespace: k.Namespace, Name: k.Name, Port: int32(k.Port)}
+				//				conf.SyncQueue <- se
+				//			}
+				//		}
+				//	}
+				//}
 			}
 		}
 	}

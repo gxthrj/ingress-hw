@@ -18,12 +18,11 @@ import (
 var (
 	ENV      string
 	basePath string
-	ADMIN_URL = os.Getenv("KONG_GRAY_ADMIN_INTERNAL")
-	LOCAL_ADMIN_URL = ""
 
 	podInformer coreinformers.PodInformer
 	svcInformer coreinformers.ServiceInformer
 	nsInformer coreinformers.NamespaceInformer
+	EndpointsInformer coreinformers.EndpointsInformer
 
 	// etcd upstreams
 	EUpstreams = &client.Response{}
@@ -33,8 +32,12 @@ var (
 	upstreamIndexMap = make(map[string]uint64)
 	// map[upstreamName] = k8s deployment info
 	upstreamK8sMap = make(map[string]*K8sDeployInfo)
+	// 同步 事件
+	SyncQueue = make(chan *SyncEvent, 1000)
 	// apisix admin url
 	BaseUrl = "http://172.16.20.90:30116/apisix/admin"
+
+
 )
 const PROD = "prod"
 const HBPROD = "hb-prod"
@@ -42,10 +45,6 @@ const BETA = "beta"
 const DEV = "dev"
 const LOCAL = "local"
 const confPath = "/root/ingress-hw/conf.json"
-const GrayKey = "/gray"
-const GrayBalancerKey = "/gray/balancer"
-const GrayBalancerLevel = "/gray/balancer/level"
-const GrayBalancerRules = "/gray/balancer/rules"
 const ApisixUpstreams = "/apisix/upstreams"
 
 
@@ -107,6 +106,12 @@ func init() {
 	// init informer
 	InitInformer()
 }
+type SyncEvent struct {
+	Namespace string `json:"namespace"`
+	Name string `json:"name"`
+	Port int32	`json:"port"`
+	Nodes map[string]int64 `json:"nodes"`
+}
 
 type etcdConfig struct {
 	Addresses []string
@@ -121,14 +126,6 @@ type syslog struct {
 }
 
 
-func GetURL() string{
-	if ADMIN_URL != "" {
-		return ADMIN_URL
-	} else {
-		return "http://10.12.6.139:14905"
-	}
-}
-
 func GetPodInformer() coreinformers.PodInformer{
 	return podInformer
 }
@@ -139,6 +136,10 @@ func GetSvcInformer() coreinformers.ServiceInformer{
 
 func GetNsInformer() coreinformers.NamespaceInformer{
 	return nsInformer
+}
+
+func GetEpInformer() coreinformers.EndpointsInformer{
+	return EndpointsInformer
 }
 
 func GetUpstreamK8sMap() map[string]*K8sDeployInfo {
@@ -178,6 +179,7 @@ func InitInformer() (coreinformers.PodInformer, coreinformers.ServiceInformer, c
 	podInformer = sharedInformerFactory.Core().V1().Pods()
 	svcInformer = sharedInformerFactory.Core().V1().Services()
 	nsInformer = sharedInformerFactory.Core().V1().Namespaces()
+	EndpointsInformer = sharedInformerFactory.Core().V1().Endpoints()
 	return podInformer, svcInformer, nsInformer
 }
 
@@ -234,6 +236,7 @@ type K8sDeployInfo struct {
 	Name string `json:"name"`
 	Port int64 `json:"port"`
 	Label map[string]string `json:"label"`
+	//BackendType string `json:"backendType"`
 }
 
 
