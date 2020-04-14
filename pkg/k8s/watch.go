@@ -100,6 +100,12 @@ func Sync(se *conf.SyncEvent){
 			k8sInfoMap := conf.GetUpstreamK8sMap()
 			k8sInfo := k8sInfoMap[desc]
 			if k8sInfo != nil {
+				// if backendType == svc
+				if k8sInfo.BackendType == "svc" {
+					svcMap := make(map[string]int64)
+					svcMap[name + "." + ns + ".svc.cluster.local:" + strconv.Itoa(int(port))] = 100
+					se.Nodes = svcMap
+				}
 				// from svc endpoint
 				nodes := se.Nodes
 				if len(nodes) == 0 {
