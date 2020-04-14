@@ -233,10 +233,11 @@ type Upstream struct {
 
 type K8sDeployInfo struct {
 	Namespace string `json:"namespace"`
-	Name string `json:"name"`
+	DeployName string `json:"deployName"`
+	ServiceName string `json:"serviceName"`
 	Port int64 `json:"port"`
-	Label map[string]string `json:"label"`
-	//BackendType string `json:"backendType"`
+	//Label map[string]string `json:"label"`
+	BackendType string `json:"backendType"`
 }
 
 

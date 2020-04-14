@@ -53,7 +53,7 @@ func (e *EtcdWatcher) ListUpstreams(){
 		upstreamK8sMap := conf.GetUpstreamK8sMap()
 		for _, v := range upstreamK8sMap {
 			//k8s.Sync(v.Namespace, v.Name, int32(v.Port))
-			se := &conf.SyncEvent{Namespace: v.Namespace, Name: v.Name, Port: int32(v.Port)}
+			se := &conf.SyncEvent{Namespace: v.Namespace, Name: v.ServiceName, Port: int32(v.Port)}
 			conf.SyncQueue <- se
 		}
 	}
@@ -129,7 +129,7 @@ func watchEtcd(ctx context.Context, kapi client.KeysAPI, key string) {
 						k := conf.GetUpstreamK8sMap()[upstream.Desc]
 						if k != nil && k.Port != 0{
 							//k8s.Sync(k.Namespace, k.Name, int32(k.Port))
-							se := &conf.SyncEvent{Namespace: k.Namespace, Name: k.Name, Port: int32(k.Port)}
+							se := &conf.SyncEvent{Namespace: k.Namespace, Name: k.ServiceName, Port: int32(k.Port)}
 							conf.SyncQueue <- se
 						}
 					}

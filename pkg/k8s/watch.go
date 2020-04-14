@@ -88,6 +88,9 @@ func Sync(se *conf.SyncEvent){
 	ns := se.Namespace
 	name := se.Name
 	port := se.Port
+	if se.Nodes == nil {
+		se.Nodes = make(map[string]int64)
+	}
 	if port != 0 {
 		desc := ns + "_" + name + "_" + strconv.Itoa(int(port))
 		key := conf.GetUpstreamMap()[desc]
