@@ -1,13 +1,13 @@
-controller部署文档：
+## controller部署文档：
 以下配置假设namespace为apisix
 
-1.使用docker打包推送镜像；
+### 1.使用docker打包推送镜像；
 ```
 docker build -t ???/???/ingress-hw:??? .
 docker push ???/???/ingress-hw:???
 ```
 
-2.配置环境变量；
+### 2.配置环境变量；
 ```
 apiVersion: v1
 kind: ConfigMap
@@ -20,7 +20,7 @@ data:
   APISIX_BASE_URL: "http://apisix.apisix.svc.cluster.local:9180/apisix/admin"
 ```
 
-3.配置RBAC;
+### 3.配置RBAC;
 ```
 apiVersion: v1
 kind: ServiceAccount
@@ -163,7 +163,7 @@ rules:
   - watch
 ```
 
-4.修改deployment；
+### 4.修改deployment；
 ```
 apiVersion: apps/v1beta1
 kind: Deployment
@@ -202,5 +202,5 @@ spec:
       terminationGracePeriodSeconds: 60
 ```
 
-5.启动；
+### 5.启动；
 通过kubectl执行deployment
