@@ -228,16 +228,16 @@ type Upstream struct {
 	Nodes map[string]int64 `json:"nodes"`
 	Desc string `json:"desc"`
 	LBType string `json:"type"`
-	K8sDeployInfo K8sDeployInfo `json:"k8s-deployment-info"`
+	K8sDeployInfo K8sDeployInfo `json:"k8s_deployment_info"`
 }
 
 type K8sDeployInfo struct {
 	Namespace string `json:"namespace"`
-	DeployName string `json:"deployName"`
-	ServiceName string `json:"serviceName"`
+	DeployName string `json:"deploy_name"`
+	ServiceName string `json:"service_name"`
 	Port int64 `json:"port"`
 	//Label map[string]string `json:"label"`
-	BackendType string `json:"backendType"`
+	BackendType string `json:"backend_type"`
 }
 
 
