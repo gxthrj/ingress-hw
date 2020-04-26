@@ -44,7 +44,7 @@ const HBPROD = "hb-prod"
 const BETA = "beta"
 const DEV = "dev"
 const LOCAL = "local"
-const confPath = "/root/ingress-hw/conf.json"
+const confPath = "/root/ingress-controller/conf.json"
 const ApisixUpstreams = "/apisix/upstreams"
 
 
