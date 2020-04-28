@@ -108,7 +108,7 @@ func (hook *SysLogHook) Fire(entry *logrus.Entry) error {
 }
 
 func localPrint(line string) {
-	if conf.ENV != conf.BETA && conf.ENV != conf.PROD && conf.ENV != conf.HBPROD{
+	if conf.ENV != conf.PROD {
 		fmt.Print(line)
 	}
 }

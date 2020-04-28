@@ -40,12 +40,10 @@ var (
 
 )
 const PROD = "prod"
-const HBPROD = "hb-prod"
-const BETA = "beta"
-const DEV = "dev"
 const LOCAL = "local"
 const confPath = "/root/ingress-controller/conf.json"
 const ApisixUpstreams = "/apisix/upstreams"
+const Separator = "_"
 
 
 
@@ -56,6 +54,13 @@ func setEnvironment() {
 		ENV = env
 	}
 	_, basePath, _, _ = runtime.Caller(1)
+
+	// BaseUrl
+	if url := os.Getenv("APISIX_BASE_URL"); url != "" {
+		BaseUrl = url
+	}
+
+	// todo dns domain
 }
 
 func ConfPath() string {
@@ -226,7 +231,7 @@ func ExceptNilErr(err error)  {
 
 type Upstream struct {
 	Nodes map[string]int64 `json:"nodes"`
-	Desc string `json:"desc"`
+	Desc string `json:"desc,omitempty"`
 	LBType string `json:"type"`
 	K8sDeployInfo K8sDeployInfo `json:"k8s_deployment_info"`
 }

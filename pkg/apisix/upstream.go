@@ -13,7 +13,7 @@ type UpstreamRequest struct {
 	HashOn *string          `json:"hash_on,omitempty"`
 	Key    *string          `json:"key,omitempty"`
 	Nodes  map[string]int64 `json:"nodes"`
-	Desc   string           `json:"desc"`
+	Desc   string           `json:"desc,omitempty"`
 }
 
 type UpstreamUpdateResponse struct {
@@ -27,7 +27,7 @@ type Node struct {
 }
 
 type Value struct {
-	Desc string `json:"desc"`
+	Desc string `json:"desc,omitempty"`
 }
 
 
@@ -35,7 +35,7 @@ func UpdateUpstream(upstreamId string, name string, nodes map[string]int64) (*Up
 	url := fmt.Sprintf("%s/upstreams/%s", conf.BaseUrl, upstreamId)
 	ur := UpstreamRequest{
 		LBType: "roundrobin",
-		Desc: name,
+		//Desc: name,
 		Nodes: nodes,
 	}
 	if b, err := json.Marshal(ur); err != nil {
@@ -67,7 +67,7 @@ type Upstream struct {
 
 type UpstreamNodes struct {
 	Nodes map[string]int64 `json:"nodes"`
-	Desc string `json:"desc"` // upstream name  = k8s svc
+	Desc string `json:"desc,omitempty"` // upstream name  = k8s svc
 	LBType string `json:"type"` // 负载均衡类型
 }
 

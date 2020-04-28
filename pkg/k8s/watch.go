@@ -92,7 +92,7 @@ func Sync(se *conf.SyncEvent){
 		se.Nodes = make(map[string]int64)
 	}
 	if port != 0 {
-		desc := ns + "_" + name + "_" + strconv.Itoa(int(port))
+		desc := ns + conf.Separator + name + conf.Separator + strconv.Itoa(int(port))
 		key := conf.GetUpstreamMap()[desc]
 		if key != "" {
 			tmp := strings.Split(key, "/")
@@ -101,7 +101,7 @@ func Sync(se *conf.SyncEvent){
 			k8sInfo := k8sInfoMap[desc]
 			if k8sInfo != nil {
 				// if backendType == svc
-				if k8sInfo.BackendType == "svc" {
+				if k8sInfo.BackendType != "pod" { // default is svc
 					svcMap := make(map[string]int64)
 					svcMap[name + "." + ns + ".svc.cluster.local:" + strconv.Itoa(int(port))] = 100
 					se.Nodes = svcMap
@@ -152,7 +152,7 @@ func Sync(se *conf.SyncEvent){
 						upstream := resp.Node.Value
 						logger.Info(resp)
 						logger.Info(upstream)
-						conf.GetUpstreamIndexMap()[upstream.Desc] = resp.Node.ModifiedIndex
+						conf.GetUpstreamIndexMap()[desc] = resp.Node.ModifiedIndex
 						//var upstream conf.Upstream
 						//if err := json.Unmarshal([]byte(value), &upstream); err != nil {
 						//	logger.Error(err)

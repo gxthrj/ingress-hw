@@ -7,6 +7,7 @@ import (
 	"github.com/gxthrj/ingress-hw/conf"
 	"github.com/gxthrj/ingress-hw/log"
 	"encoding/json"
+	"strconv"
 )
 
 const ApisixUpstreams = "/apisix/upstreams"
@@ -79,12 +80,16 @@ func TransOne(node *client.Node) conf.Upstream{
 	if err := json.Unmarshal([]byte(node.Value), &upstream); err != nil {
 		logger.Error(err.Error())
 	} else {
+		ns := upstream.K8sDeployInfo.Namespace
+		name := upstream.K8sDeployInfo.ServiceName
+		port := upstream.K8sDeployInfo.Port
+		desc := ns + conf.Separator + name + conf.Separator + strconv.Itoa(int(port))
 		// map[upstreamName]= upstream key
-		conf.GetUpstreamMap()[upstream.Desc] = node.Key
+		conf.GetUpstreamMap()[desc] = node.Key
 		// map[upstreamName] = modifiedIndex
-		conf.GetUpstreamIndexMap()[upstream.Desc] = node.ModifiedIndex
+		conf.GetUpstreamIndexMap()[desc] = node.ModifiedIndex
 		// map[upstreamName] = k8s deployment info
-		conf.GetUpstreamK8sMap()[upstream.Desc] = &upstream.K8sDeployInfo
+		conf.GetUpstreamK8sMap()[desc] = &upstream.K8sDeployInfo
 	}
 	return upstream
 }
@@ -116,23 +121,27 @@ func watchEtcd(ctx context.Context, kapi client.KeysAPI, key string) {
 				if err := json.Unmarshal([]byte(value), &upstream); err != nil {
 					logger.Error(err)
 				} else {
-					index := conf.GetUpstreamIndexMap()[upstream.Desc]
-					logger.Infof("%d:%d", index, n.ModifiedIndex)
-					if index >= n.ModifiedIndex {
+					//index := conf.GetUpstreamIndexMap()[upstream.Desc]
+					//logger.Infof("%d:%d", index, n.ModifiedIndex)
+					//if index >= n.ModifiedIndex {
 						// do nothing
-						logger.Infof("%s index out of date", upstream.Desc)
-					} else {
-						logger.Infof("%s 开始同步", upstream.Desc)
+						//logger.Infof("%s index out of date", upstream.Desc)
+					//} else {
+						ns := upstream.K8sDeployInfo.Namespace
+						name := upstream.K8sDeployInfo.ServiceName
+						port := upstream.K8sDeployInfo.Port
+						desc := ns + conf.Separator + name + conf.Separator + strconv.Itoa(int(port))
+						logger.Infof("%s 开始同步", desc)
 						TransOne(n)
 						// sync upstream
 						logger.Info(conf.GetUpstreamK8sMap())
-						k := conf.GetUpstreamK8sMap()[upstream.Desc]
+						k := conf.GetUpstreamK8sMap()[desc]
 						if k != nil && k.Port != 0{
 							//k8s.Sync(k.Namespace, k.Name, int32(k.Port))
 							se := &conf.SyncEvent{Namespace: k.Namespace, Name: k.ServiceName, Port: int32(k.Port)}
 							conf.SyncQueue <- se
 						}
-					}
+					//}
 				}
 				// 遍历 nodes，查看是否已经存在，不存在的需要添加
 				//for _, n := range v.Node.Nodes{
