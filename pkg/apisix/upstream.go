@@ -32,12 +32,13 @@ type Value struct {
 
 
 func UpdateUpstream(upstreamId string, name string, nodes map[string]int64) (*UpstreamUpdateResponse, error){
-	url := fmt.Sprintf("%s/upstreams/%s", conf.BaseUrl, upstreamId)
-	ur := UpstreamRequest{
-		LBType: "roundrobin",
-		//Desc: name,
-		Nodes: nodes,
-	}
+	url := fmt.Sprintf("%s/upstreams/%s/nodes", conf.BaseUrl, upstreamId)
+	//ur := UpstreamRequest{
+	//	LBType: "roundrobin",
+	//	Desc: name,
+	//	Nodes: nodes,
+	//}
+	ur := nodes
 	if b, err := json.Marshal(ur); err != nil {
 		return nil, err
 	} else {
