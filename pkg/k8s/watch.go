@@ -99,7 +99,7 @@ func Sync(se *conf.SyncEvent){
 			upstreamId := tmp[len(tmp) - 1]
 			k8sInfoMap := conf.GetUpstreamK8sMap()
 			k8sInfo := k8sInfoMap[desc]
-			if k8sInfo != nil {
+			if k8sInfo != nil && k8sInfo.Namespace != "" && k8sInfo.ServiceName != "" && k8sInfo.Port != 0 {
 				// if backendType == svc
 				if k8sInfo.BackendType != "pod" { // default is svc
 					svcMap := make(map[string]int64)
