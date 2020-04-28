@@ -36,6 +36,8 @@ var (
 	SyncQueue = make(chan *SyncEvent, 1000)
 	// apisix admin url
 	BaseUrl = "http://172.16.20.90:30116/apisix/admin"
+	// apisix ApiKey
+	ApiKey = "edd1c9f034335f136f87ad84b625c8f1"
 
 
 )
@@ -59,7 +61,10 @@ func setEnvironment() {
 	if url := os.Getenv("APISIX_BASE_URL"); url != "" {
 		BaseUrl = url
 	}
-
+	// ApiKey
+	if key := os.Getenv("APISIX_API_KEY"); key != "" {
+		ApiKey = key
+	}
 	// todo dns domain
 }
 
