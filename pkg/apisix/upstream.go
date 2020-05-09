@@ -43,6 +43,7 @@ func UpdateUpstream(upstreamId string, name string, nodes map[string]int64) (*Up
 		return nil, err
 	} else {
 		if resp, err := utils.Patch(url, b); err != nil {
+			logger.Error(err.Error())
 			return nil, err
 		} else {
 			var response UpstreamUpdateResponse
@@ -78,12 +79,15 @@ func FindUpstreamByName(name string) UpstreamResponse{
 	if key != "" {
 		urlWithId := fmt.Sprintf("%s%s", conf.BaseUrl, ReplacePrefix(key))
 		logger.Info(fmt.Sprintf("=================== %s", urlWithId))
-		uRet, _ := utils.Get(urlWithId)
-		var upstream UpstreamResponse
-		if err := json.Unmarshal(uRet, &upstream); err != nil {
+		if uRet, err := utils.Get(urlWithId); err != nil {
 			logger.Error(err.Error())
 		} else {
-			return upstream
+			var upstream UpstreamResponse
+			if err := json.Unmarshal(uRet, &upstream); err != nil {
+				logger.Error(err.Error())
+			} else {
+				return upstream
+			}
 		}
 	}
 	return UpstreamResponse{}
