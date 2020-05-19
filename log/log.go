@@ -19,7 +19,7 @@ func GetLogger() *logrus.Entry {
 		setNull(log)
 		log.SetLevel(logrus.DebugLevel)
 		if conf.ENV != conf.LOCAL {
-			log.SetLevel(logrus.InfoLevel)
+			log.SetLevel(logrus.ErrorLevel)
 		}
 		log.SetFormatter(&logrus.JSONFormatter{})
 		logEntry = log.WithFields(logrus.Fields{
