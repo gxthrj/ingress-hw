@@ -110,7 +110,11 @@ func Sync(se *conf.SyncEvent){
 				nodes := se.Nodes
 				if len(nodes) == 0 {
 					epInformer := conf.GetEpInformer()
-					ep, _ := epInformer.Lister().Endpoints(ns).Get(name)
+					ep, err := epInformer.Lister().Endpoints(ns).Get(name)
+					if err != nil {
+						logger.Errorf("k8s获取%s:%s有误", ns, name)
+						return
+					}
 					if port != 0 && ep != nil {
 						ips := make([]string, 0)
 						infos := make([]podInfo, 0)
